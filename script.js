@@ -1,3 +1,11 @@
+/*!
+ * Webflow: Front-end site library
+ * @license MIT
+ * Inline scripts may access the api using an async handler:
+ *   var Webflow = Webflow || [];
+ *   Webflow.push(readyFunction);
+ */
+
 (() => {
     var __getOwnPropNames = Object.getOwnPropertyNames;
     var __commonJS = (cb, mod) => function __require() {
@@ -1928,6 +1936,553 @@
       }
     });
   
+    // packages/shared/render/plugins/BaseSiteModules/webflow-ix-events.js
+    var require_webflow_ix_events = __commonJS({
+      "packages/shared/render/plugins/BaseSiteModules/webflow-ix-events.js"(exports, module) {
+        "use strict";
+        var $ = window.jQuery;
+        var api = {};
+        var eventQueue = [];
+        var namespace = ".w-ix";
+        var eventTriggers = {
+          reset: function(i, el) {
+            el.__wf_intro = null;
+          },
+          intro: function(i, el) {
+            if (el.__wf_intro) {
+              return;
+            }
+            el.__wf_intro = true;
+            $(el).triggerHandler(api.types.INTRO);
+          },
+          outro: function(i, el) {
+            if (!el.__wf_intro) {
+              return;
+            }
+            el.__wf_intro = null;
+            $(el).triggerHandler(api.types.OUTRO);
+          }
+        };
+        api.triggers = {};
+        api.types = {
+          INTRO: "w-ix-intro" + namespace,
+          OUTRO: "w-ix-outro" + namespace
+        };
+        api.init = function() {
+          var count = eventQueue.length;
+          for (var i = 0; i < count; i++) {
+            var memo = eventQueue[i];
+            memo[0](0, memo[1]);
+          }
+          eventQueue = [];
+          $.extend(api.triggers, eventTriggers);
+        };
+        api.async = function() {
+          for (var key in eventTriggers) {
+            var func = eventTriggers[key];
+            if (!eventTriggers.hasOwnProperty(key)) {
+              continue;
+            }
+            api.triggers[key] = function(i, el) {
+              eventQueue.push([func, el]);
+            };
+          }
+        };
+        api.async();
+        module.exports = api;
+      }
+    });
+  
+    // packages/shared/render/plugins/BaseSiteModules/webflow-ix2-events.js
+    var require_webflow_ix2_events = __commonJS({
+      "packages/shared/render/plugins/BaseSiteModules/webflow-ix2-events.js"(exports, module) {
+        "use strict";
+        var IXEvents = require_webflow_ix_events();
+        function dispatchCustomEvent(element, eventName) {
+          var event = document.createEvent("CustomEvent");
+          event.initCustomEvent(eventName, true, true, null);
+          element.dispatchEvent(event);
+        }
+        var $ = window.jQuery;
+        var api = {};
+        var namespace = ".w-ix";
+        var eventTriggers = {
+          reset: function(i, el) {
+            IXEvents.triggers.reset(i, el);
+          },
+          intro: function(i, el) {
+            IXEvents.triggers.intro(i, el);
+            dispatchCustomEvent(el, "COMPONENT_ACTIVE");
+          },
+          outro: function(i, el) {
+            IXEvents.triggers.outro(i, el);
+            dispatchCustomEvent(el, "COMPONENT_INACTIVE");
+          }
+        };
+        api.triggers = {};
+        api.types = {
+          INTRO: "w-ix-intro" + namespace,
+          OUTRO: "w-ix-outro" + namespace
+        };
+        $.extend(api.triggers, eventTriggers);
+        module.exports = api;
+      }
+    });
+  
+    // packages/shared/render/plugins/Navbar/webflow-navbar.js
+    var require_webflow_navbar = __commonJS({
+      "packages/shared/render/plugins/Navbar/webflow-navbar.js"(exports, module) {
+        "use strict";
+        var Webflow = require_webflow_lib();
+        var IXEvents = require_webflow_ix2_events();
+        var KEY_CODES = {
+          ARROW_LEFT: 37,
+          ARROW_UP: 38,
+          ARROW_RIGHT: 39,
+          ARROW_DOWN: 40,
+          ESCAPE: 27,
+          SPACE: 32,
+          ENTER: 13,
+          HOME: 36,
+          END: 35
+        };
+        Webflow.define("navbar", module.exports = function($, _) {
+          var api = {};
+          var tram = $.tram;
+          var $win = $(window);
+          var $doc = $(document);
+          var debounce = _.debounce;
+          var $body;
+          var $navbars;
+          var designer;
+          var inEditor;
+          var inApp = Webflow.env();
+          var overlay = '<div class="w-nav-overlay" data-wf-ignore />';
+          var namespace = ".w-nav";
+          var navbarOpenedButton = "w--open";
+          var navbarOpenedDropdown = "w--nav-dropdown-open";
+          var navbarOpenedDropdownToggle = "w--nav-dropdown-toggle-open";
+          var navbarOpenedDropdownList = "w--nav-dropdown-list-open";
+          var navbarOpenedLink = "w--nav-link-open";
+          var ix = IXEvents.triggers;
+          var menuSibling = $();
+          api.ready = api.design = api.preview = init;
+          api.destroy = function() {
+            menuSibling = $();
+            removeListeners();
+            if ($navbars && $navbars.length) {
+              $navbars.each(teardown);
+            }
+          };
+          function init() {
+            designer = inApp && Webflow.env("design");
+            inEditor = Webflow.env("editor");
+            $body = $(document.body);
+            $navbars = $doc.find(namespace);
+            if (!$navbars.length) {
+              return;
+            }
+            $navbars.each(build);
+            removeListeners();
+            addListeners();
+          }
+          function removeListeners() {
+            Webflow.resize.off(resizeAll);
+          }
+          function addListeners() {
+            Webflow.resize.on(resizeAll);
+          }
+          function resizeAll() {
+            $navbars.each(resize);
+          }
+          function build(i, el) {
+            var $el = $(el);
+            var data = $.data(el, namespace);
+            if (!data) {
+              data = $.data(el, namespace, {
+                open: false,
+                el: $el,
+                config: {},
+                selectedIdx: -1
+              });
+            }
+            data.menu = $el.find(".w-nav-menu");
+            data.links = data.menu.find(".w-nav-link");
+            data.dropdowns = data.menu.find(".w-dropdown");
+            data.dropdownToggle = data.menu.find(".w-dropdown-toggle");
+            data.dropdownList = data.menu.find(".w-dropdown-list");
+            data.button = $el.find(".w-nav-button");
+            data.container = $el.find(".w-container");
+            data.overlayContainerId = "w-nav-overlay-" + i;
+            data.outside = outside(data);
+            var navBrandLink = $el.find(".w-nav-brand");
+            if (navBrandLink && navBrandLink.attr("href") === "/" && navBrandLink.attr("aria-label") == null) {
+              navBrandLink.attr("aria-label", "home");
+            }
+            data.button.attr("style", "-webkit-user-select: text;");
+            if (data.button.attr("aria-label") == null) {
+              data.button.attr("aria-label", "menu");
+            }
+            data.button.attr("role", "button");
+            data.button.attr("tabindex", "0");
+            data.button.attr("aria-controls", data.overlayContainerId);
+            data.button.attr("aria-haspopup", "menu");
+            data.button.attr("aria-expanded", "false");
+            data.el.off(namespace);
+            data.button.off(namespace);
+            data.menu.off(namespace);
+            configure(data);
+            if (designer) {
+              removeOverlay(data);
+              data.el.on("setting" + namespace, handler(data));
+            } else {
+              addOverlay(data);
+              data.button.on("click" + namespace, toggle(data));
+              data.menu.on("click" + namespace, "a", navigate(data));
+              data.button.on("keydown" + namespace, makeToggleButtonKeyboardHandler(data));
+              data.el.on("keydown" + namespace, makeLinksKeyboardHandler(data));
+            }
+            resize(i, el);
+          }
+          function teardown(i, el) {
+            var data = $.data(el, namespace);
+            if (data) {
+              removeOverlay(data);
+              $.removeData(el, namespace);
+            }
+          }
+          function removeOverlay(data) {
+            if (!data.overlay) {
+              return;
+            }
+            close(data, true);
+            data.overlay.remove();
+            data.overlay = null;
+          }
+          function addOverlay(data) {
+            if (data.overlay) {
+              return;
+            }
+            data.overlay = $(overlay).appendTo(data.el);
+            data.overlay.attr("id", data.overlayContainerId);
+            data.parent = data.menu.parent();
+            close(data, true);
+          }
+          function configure(data) {
+            var config = {};
+            var old = data.config || {};
+            var animation = config.animation = data.el.attr("data-animation") || "default";
+            config.animOver = /^over/.test(animation);
+            config.animDirect = /left$/.test(animation) ? -1 : 1;
+            if (old.animation !== animation) {
+              data.open && _.defer(reopen, data);
+            }
+            config.easing = data.el.attr("data-easing") || "ease";
+            config.easing2 = data.el.attr("data-easing2") || "ease";
+            var duration = data.el.attr("data-duration");
+            config.duration = duration != null ? Number(duration) : 400;
+            config.docHeight = data.el.attr("data-doc-height");
+            data.config = config;
+          }
+          function handler(data) {
+            return function(evt, options) {
+              options = options || {};
+              var winWidth = $win.width();
+              configure(data);
+              options.open === true && open(data, true);
+              options.open === false && close(data, true);
+              data.open && _.defer(function() {
+                if (winWidth !== $win.width()) {
+                  reopen(data);
+                }
+              });
+            };
+          }
+          function makeToggleButtonKeyboardHandler(data) {
+            return function(evt) {
+              switch (evt.keyCode) {
+                case KEY_CODES.SPACE:
+                case KEY_CODES.ENTER: {
+                  toggle(data)();
+                  evt.preventDefault();
+                  return evt.stopPropagation();
+                }
+                case KEY_CODES.ESCAPE: {
+                  close(data);
+                  evt.preventDefault();
+                  return evt.stopPropagation();
+                }
+                case KEY_CODES.ARROW_RIGHT:
+                case KEY_CODES.ARROW_DOWN:
+                case KEY_CODES.HOME:
+                case KEY_CODES.END: {
+                  if (!data.open) {
+                    evt.preventDefault();
+                    return evt.stopPropagation();
+                  }
+                  if (evt.keyCode === KEY_CODES.END) {
+                    data.selectedIdx = data.links.length - 1;
+                  } else {
+                    data.selectedIdx = 0;
+                  }
+                  focusSelectedLink(data);
+                  evt.preventDefault();
+                  return evt.stopPropagation();
+                }
+              }
+            };
+          }
+          function makeLinksKeyboardHandler(data) {
+            return function(evt) {
+              if (!data.open) {
+                return;
+              }
+              data.selectedIdx = data.links.index(document.activeElement);
+              switch (evt.keyCode) {
+                case KEY_CODES.HOME:
+                case KEY_CODES.END: {
+                  if (evt.keyCode === KEY_CODES.END) {
+                    data.selectedIdx = data.links.length - 1;
+                  } else {
+                    data.selectedIdx = 0;
+                  }
+                  focusSelectedLink(data);
+                  evt.preventDefault();
+                  return evt.stopPropagation();
+                }
+                case KEY_CODES.ESCAPE: {
+                  close(data);
+                  data.button.focus();
+                  evt.preventDefault();
+                  return evt.stopPropagation();
+                }
+                case KEY_CODES.ARROW_LEFT:
+                case KEY_CODES.ARROW_UP: {
+                  data.selectedIdx = Math.max(-1, data.selectedIdx - 1);
+                  focusSelectedLink(data);
+                  evt.preventDefault();
+                  return evt.stopPropagation();
+                }
+                case KEY_CODES.ARROW_RIGHT:
+                case KEY_CODES.ARROW_DOWN: {
+                  data.selectedIdx = Math.min(data.links.length - 1, data.selectedIdx + 1);
+                  focusSelectedLink(data);
+                  evt.preventDefault();
+                  return evt.stopPropagation();
+                }
+              }
+            };
+          }
+          function focusSelectedLink(data) {
+            if (data.links[data.selectedIdx]) {
+              var selectedElement = data.links[data.selectedIdx];
+              selectedElement.focus();
+              navigate(selectedElement);
+            }
+          }
+          function reopen(data) {
+            if (!data.open) {
+              return;
+            }
+            close(data, true);
+            open(data, true);
+          }
+          function toggle(data) {
+            return debounce(function() {
+              data.open ? close(data) : open(data);
+            });
+          }
+          function navigate(data) {
+            return function(evt) {
+              var link = $(this);
+              var href = link.attr("href");
+              if (!Webflow.validClick(evt.currentTarget)) {
+                evt.preventDefault();
+                return;
+              }
+              if (href && href.indexOf("#") === 0 && data.open) {
+                close(data);
+              }
+            };
+          }
+          function outside(data) {
+            if (data.outside) {
+              $doc.off("click" + namespace, data.outside);
+            }
+            return function(evt) {
+              var $target = $(evt.target);
+              if (inEditor && $target.closest(".w-editor-bem-EditorOverlay").length) {
+                return;
+              }
+              outsideDebounced(data, $target);
+            };
+          }
+          var outsideDebounced = debounce(function(data, $target) {
+            if (!data.open) {
+              return;
+            }
+            var menu = $target.closest(".w-nav-menu");
+            if (!data.menu.is(menu)) {
+              close(data);
+            }
+          });
+          function resize(i, el) {
+            var data = $.data(el, namespace);
+            var collapsed = data.collapsed = data.button.css("display") !== "none";
+            if (data.open && !collapsed && !designer) {
+              close(data, true);
+            }
+            if (data.container.length) {
+              var updateEachMax = updateMax(data);
+              data.links.each(updateEachMax);
+              data.dropdowns.each(updateEachMax);
+            }
+            if (data.open) {
+              setOverlayHeight(data);
+            }
+          }
+          var maxWidth = "max-width";
+          function updateMax(data) {
+            var containMax = data.container.css(maxWidth);
+            if (containMax === "none") {
+              containMax = "";
+            }
+            return function(i, link) {
+              link = $(link);
+              link.css(maxWidth, "");
+              if (link.css(maxWidth) === "none") {
+                link.css(maxWidth, containMax);
+              }
+            };
+          }
+          function addMenuOpen(i, el) {
+            el.setAttribute("data-nav-menu-open", "");
+          }
+          function removeMenuOpen(i, el) {
+            el.removeAttribute("data-nav-menu-open");
+          }
+          function open(data, immediate) {
+            if (data.open) {
+              return;
+            }
+            data.open = true;
+            data.menu.each(addMenuOpen);
+            data.links.addClass(navbarOpenedLink);
+            data.dropdowns.addClass(navbarOpenedDropdown);
+            data.dropdownToggle.addClass(navbarOpenedDropdownToggle);
+            data.dropdownList.addClass(navbarOpenedDropdownList);
+            data.button.addClass(navbarOpenedButton);
+            var config = data.config;
+            var animation = config.animation;
+            if (animation === "none" || !tram.support.transform || config.duration <= 0) {
+              immediate = true;
+            }
+            var bodyHeight = setOverlayHeight(data);
+            var menuHeight = data.menu.outerHeight(true);
+            var menuWidth = data.menu.outerWidth(true);
+            var navHeight = data.el.height();
+            var navbarEl = data.el[0];
+            resize(0, navbarEl);
+            ix.intro(0, navbarEl);
+            Webflow.redraw.up();
+            if (!designer) {
+              $doc.on("click" + namespace, data.outside);
+            }
+            if (immediate) {
+              complete();
+              return;
+            }
+            var transConfig = "transform " + config.duration + "ms " + config.easing;
+            if (data.overlay) {
+              menuSibling = data.menu.prev();
+              data.overlay.show().append(data.menu);
+            }
+            if (config.animOver) {
+              tram(data.menu).add(transConfig).set({
+                x: config.animDirect * menuWidth,
+                height: bodyHeight
+              }).start({
+                x: 0
+              }).then(complete);
+              data.overlay && data.overlay.width(menuWidth);
+              return;
+            }
+            var offsetY = navHeight + menuHeight;
+            tram(data.menu).add(transConfig).set({
+              y: -offsetY
+            }).start({
+              y: 0
+            }).then(complete);
+            function complete() {
+              data.button.attr("aria-expanded", "true");
+            }
+          }
+          function setOverlayHeight(data) {
+            var config = data.config;
+            var bodyHeight = config.docHeight ? $doc.height() : $body.height();
+            if (config.animOver) {
+              data.menu.height(bodyHeight);
+            } else if (data.el.css("position") !== "fixed") {
+              bodyHeight -= data.el.outerHeight(true);
+            }
+            data.overlay && data.overlay.height(bodyHeight);
+            return bodyHeight;
+          }
+          function close(data, immediate) {
+            if (!data.open) {
+              return;
+            }
+            data.open = false;
+            data.button.removeClass(navbarOpenedButton);
+            var config = data.config;
+            if (config.animation === "none" || !tram.support.transform || config.duration <= 0) {
+              immediate = true;
+            }
+            ix.outro(0, data.el[0]);
+            $doc.off("click" + namespace, data.outside);
+            if (immediate) {
+              tram(data.menu).stop();
+              complete();
+              return;
+            }
+            var transConfig = "transform " + config.duration + "ms " + config.easing2;
+            var menuHeight = data.menu.outerHeight(true);
+            var menuWidth = data.menu.outerWidth(true);
+            var navHeight = data.el.height();
+            if (config.animOver) {
+              tram(data.menu).add(transConfig).start({
+                x: menuWidth * config.animDirect
+              }).then(complete);
+              return;
+            }
+            var offsetY = navHeight + menuHeight;
+            tram(data.menu).add(transConfig).start({
+              y: -offsetY
+            }).then(complete);
+            function complete() {
+              data.menu.height("");
+              tram(data.menu).set({
+                x: 0,
+                y: 0
+              });
+              data.menu.each(removeMenuOpen);
+              data.links.removeClass(navbarOpenedLink);
+              data.dropdowns.removeClass(navbarOpenedDropdown);
+              data.dropdownToggle.removeClass(navbarOpenedDropdownToggle);
+              data.dropdownList.removeClass(navbarOpenedDropdownList);
+              if (data.overlay && data.overlay.children().length) {
+                menuSibling.length ? data.menu.insertAfter(menuSibling) : data.menu.prependTo(data.parent);
+                data.overlay.attr("style", "").hide();
+              }
+              data.el.triggerHandler("w-close");
+              data.button.attr("aria-expanded", "false");
+            }
+          }
+          return api;
+        });
+      }
+    });
+  
     // <stdin>
     require_webflow_brand();
     require_webflow_edit();
@@ -1936,6 +2491,7 @@
     require_webflow_links();
     require_webflow_scroll();
     require_webflow_touch();
+    require_webflow_navbar();
   })();
   /*!
    * tram.js v0.8.2-global
