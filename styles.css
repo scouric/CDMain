@@ -706,8 +706,6 @@ textarea.w-input, textarea.w-select {
   max-width: 940px;
   margin-left: auto;
   margin-right: auto;
-  margin-top: auto;
-  margin-bottom: auto;
 }
 
 .w-container:before, .w-container:after {
@@ -723,8 +721,6 @@ textarea.w-input, textarea.w-select {
 .w-container .w-row {
   margin-left: -10px;
   margin-right: -10px;
-  margin-top: -10px;
-  margin-bottom: -10px;
 }
 
 .w-row:before, .w-row:after {
@@ -2103,25 +2099,6 @@ textarea.w-input, textarea.w-select {
   --light-sea-green: #1abc9c;
 }
 
-.w-layout-blockcontainer {
-  max-width: 940px;
-  margin-left: auto;
-  margin-right: auto;
-  display: block;
-}
-
-@media screen and (max-width: 991px) {
-  .w-layout-blockcontainer {
-    max-width: 728px;
-  }
-}
-
-@media screen and (max-width: 767px) {
-  .w-layout-blockcontainer {
-    max-width: none;
-  }
-}
-
 body {
   color: #fff;
   text-align: center;
@@ -2379,8 +2356,8 @@ p {
   grid-template-rows: auto auto;
   grid-template-columns: 1fr 1fr;
   grid-auto-columns: 1fr;
-  padding-left: 127px;
-  padding-right: 127px;
+  padding-left: 165px;
+  padding-right: 165px;
   display: block;
 }
 
@@ -2469,7 +2446,7 @@ p {
 }
 
 .image {
-  padding-bottom: 40px;
+  padding-bottom: 0;
 }
 
 .flex-block {
@@ -2488,12 +2465,11 @@ p {
 }
 
 .body {
-  background-image: linear-gradient(rgba(0, 0, 1, .5), rgba(0, 0, 1, .5)), url("https://assets-global.website-files.com/6583e8db00b22da57676f599/6583efa70803526b419a0f26_189449-Goldfields.jpg");
-  background-position: 0 0, 50%;
-  background-repeat: repeat, repeat;
-  background-size: auto, cover;
-  background-attachment: scroll, scroll;
+  background-color: #24272c;
+  background-image: linear-gradient(rgba(0, 0, 1, .5), rgba(0, 0, 1, .5));
   border-radius: 0;
+  padding-top: 300px;
+  padding-bottom: 300px;
 }
 
 @media screen and (max-width: 991px) {
@@ -2575,6 +2551,11 @@ p {
 
   .logo, .join {
     text-shadow: none;
+  }
+
+  .image {
+    padding-left: 31px;
+    padding-right: 30px;
   }
 }
 
