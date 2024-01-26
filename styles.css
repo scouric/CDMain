@@ -2159,7 +2159,7 @@ textarea.w-input, textarea.w-select {
 
 .footer {
   color: rgba(255, 255, 255, .5);
-  margin: 20px 20px -70px;
+  margin: 20px 20px 20px;
   position: absolute;
   top: auto;
   bottom: 0%;
