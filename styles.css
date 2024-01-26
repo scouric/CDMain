@@ -2091,6 +2091,11 @@ textarea.w-input, textarea.w-select {
   display: grid;
 }
 
+:root {
+  --white: white;
+  --black: black;
+}
+
 .w-layout-blockcontainer {
   max-width: 940px;
   margin-left: auto;
@@ -2116,6 +2121,11 @@ textarea.w-input, textarea.w-select {
   justify-content: center;
   align-items: center;
   display: flex;
+  position: fixed;
+  top: 0%;
+  bottom: auto;
+  left: 0%;
+  right: 0%;
   box-shadow: 0 2px 11px 8px rgba(0, 0, 0, .2);
 }
 
@@ -2149,7 +2159,7 @@ textarea.w-input, textarea.w-select {
 
 .footer {
   color: rgba(255, 255, 255, .5);
-  margin: 20px;
+  margin: 20px 20px -70px;
   position: absolute;
   top: auto;
   bottom: 0%;
@@ -2158,7 +2168,7 @@ textarea.w-input, textarea.w-select {
 }
 
 .container-2 {
-  margin-top: 50px;
+  margin-top: 90px;
   margin-bottom: 50px;
   padding-bottom: 0;
 }
