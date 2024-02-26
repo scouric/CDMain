@@ -2134,8 +2134,8 @@ textarea.w-input, textarea.w-select {
 }
 
 .body {
-  background-color: #1a2c38;
-  background-image: linear-gradient(#1a2c38, #000);
+  background-color: #eaeaea;
+  background-image: linear-gradient(#eaeaea, #000);
 }
 
 .brand {
